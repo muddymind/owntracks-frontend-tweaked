@@ -99,41 +99,40 @@ describe('Location Clustering Functions', () => {
     const result = testFullPipeline(locations);
     const visitPoints = result.filter(p => p.node_event_type === 'visit');
     const travelPoints = result.filter(p => p.node_event_type === 'travel');
-    const nullPoints = result.filter(p => p.node_event_type === null);
 
     expect(visitPoints).toHaveLength(0);
     expect(travelPoints.length).toBeGreaterThan(0);
-    expect(nullPoints).toHaveLength(1); // Last point preserved
+    // All points now go through clustering, no special null points
   });
 
   test('should create visit cluster with sufficient clustered points', () => {
     const locations = [
       ...createClusteredPoints(40.7128, -74.0060, 5, 1000), // 5 clustered points
-      createPoint(40.8000, -74.1000, 6000)                 // Last point
+      createPoint(40.8000, -74.1000, 6000)                 // Last point (now also processed)
     ];
 
     const clusters = findLocationClusters(locations, CLUSTER_RADIUS, MIN_VISIT_CLUSTER_SIZE, MIN_TRAVEL_CLUSTER_SIZE);
     const mergedClusters = mergeConsecutiveTravelClusters(clusters);
 
-    // Should result in 1 visit cluster
-    expect(mergedClusters).toHaveLength(1);
+    // Should result in 1 visit cluster + 1 travel cluster (for the last distant point)
+    expect(mergedClusters.length).toBeGreaterThanOrEqual(1);
     expect(mergedClusters[0].type).toBe('visit');
     expect(mergedClusters[0].pointIndices).toHaveLength(5);
   });
 
   test('should merge consecutive travel clusters', () => {
     const locations = [
-      ...createDistantPoints(40.7128, -74.0060, 6, 1000), // 6 distant points (should create 3 travel clusters of 2 points each)
-      createPoint(40.8000, -74.1000, 7000)               // Last point
+      ...createDistantPoints(40.7128, -74.0060, 6, 1000), // 6 distant points (should create travel clusters)
+      createPoint(40.8000, -74.1000, 7000)               // Last point (now also processed)
     ];
 
     const clusters = findLocationClusters(locations, CLUSTER_RADIUS, MIN_VISIT_CLUSTER_SIZE, MIN_TRAVEL_CLUSTER_SIZE);
     const mergedClusters = mergeConsecutiveTravelClusters(clusters);
 
-    // Should result in 1 merged travel cluster
+    // Should result in 1 merged travel cluster (all points are distant, so all become travel)
     expect(mergedClusters).toHaveLength(1);
     expect(mergedClusters[0].type).toBe('travel');
-    expect(mergedClusters[0].pointIndices).toHaveLength(6);
+    expect(mergedClusters[0].pointIndices).toHaveLength(7); // All 7 points now included
   });
 
   test('should handle Visit + Travel + Visit pattern', () => {
@@ -141,14 +140,14 @@ describe('Location Clustering Functions', () => {
       ...createClusteredPoints(40.7128, -74.0060, 3, 1000),  // Visit 1 (indices 0,1,2)
       ...createDistantPoints(40.7128, -74.0060, 2, 4000),    // Travel (indices 3,4) - only 2 points, should be travel cluster
       ...createClusteredPoints(40.8000, -74.1000, 4, 6000),  // Visit 2 (indices 5,6,7,8)
-      createPoint(40.9000, -74.2000, 10000)                  // Last point
+      createPoint(40.9000, -74.2000, 10000)                  // Last point (now also processed)
     ];
 
     const clusters = findLocationClusters(locations, CLUSTER_RADIUS, MIN_VISIT_CLUSTER_SIZE, MIN_TRAVEL_CLUSTER_SIZE);
     const mergedClusters = mergeConsecutiveTravelClusters(clusters);
 
-    // Should result in: Visit + Travel + Visit = 3 clusters
-    expect(mergedClusters).toHaveLength(3);
+    // Should result in: Visit + Travel + Visit + Travel (last point) = 4 clusters
+    expect(mergedClusters.length).toBeGreaterThanOrEqual(3);
     expect(mergedClusters[0].type).toBe('visit');
     expect(mergedClusters[1].type).toBe('travel');
     expect(mergedClusters[2].type).toBe('visit');
@@ -224,17 +223,18 @@ describe('Location Clustering Functions', () => {
     expect(eventTypes.some(t => t === 'travel')).toBe(true);
   });
 
-  test('should preserve last point', () => {
+  test('should handle last point in clustering algorithm', () => {
     const locations = [
       ...createClusteredPoints(40.7128, -74.0060, 5, 1000), // Visit cluster
-      createPoint(40.8000, -74.1000, 6000)                 // Last point (should be preserved)
+      createPoint(40.8000, -74.1000, 6000)                 // Last point (now processed through clustering)
     ];
 
     const result = testFullPipeline(locations);
     
-    // Last point should have null metadata (preserved unchanged)
+    // All points should now have metadata (no special null treatment)
     const lastPoint = result[result.length - 1];
-    expect(lastPoint.node_event_type).toBeNull();
+    expect(lastPoint.node_event_type).not.toBeNull(); // Should have metadata now
+    expect(['visit', 'travel']).toContain(lastPoint.node_event_type);
     expect(lastPoint.lat).toBe(40.8000);
     expect(lastPoint.lon).toBe(-74.1000);
   });

@@ -62,9 +62,9 @@ const calculateDistanceInMeters = (point1, point2) => {
  * @returns {LocationHistory}
  */
 const clusterLocationPoints = (locationHistory) => {
-  const CLUSTER_RADIUS = 40; // 40 meters cluster radius
-  const MIN_VISIT_CLUSTER_SIZE = 3; // At least 3 points to form a visit cluster
-  const MIN_TRAVEL_CLUSTER_SIZE = 5; // At least 5 points to form a travel cluster
+  const CLUSTER_RADIUS = 25; // 25 meters visit cluster radius
+  const MIN_VISIT_CLUSTER_SIZE = 3; // minimum number of points to form a visit cluster
+  const MIN_TRAVEL_CLUSTER_SIZE = 5; // minimum number of points to form a travel cluster
 
   const filtered = {};
   
@@ -114,8 +114,8 @@ const findLocationClusters = (locations, clusterRadius, minVisitClusterSize, min
   
   if (locations.length <= 1) return [];
   
-  // Exclude the last point - it's special and never clustered
-  const workingLocations = locations.slice(0, -1);
+  // Process all locations including the last point
+  const workingLocations = locations;
   const clusters = [];
   let i = 0;
   
@@ -264,16 +264,11 @@ const trySkipTransientPoints = (workingLocations, startIndex, centerLat, centerL
     );
     
     if (returnDistance <= clusterRadius) {
-      // Found return to cluster - check if we should skip transient points
-      const isNearEnd = k >= (workingLocations.length - 1);
-      
-      if (!isNearEnd) {
-        // Skip transient points and continue from the return point
-        return {
-          shouldSkip: true,
-          continueFromIndex: k
-        };
-      }
+      // Found return to cluster - skip transient points and continue from the return point
+      return {
+        shouldSkip: true,
+        continueFromIndex: k
+      };
     }
   }
   
@@ -416,16 +411,6 @@ const processClusterToLocations = (clusters, originalLocations) => {
       travelCounter++;
     }
   });
-  
-  // Add the last point (always preserved and never clustered)
-  if (originalLocations.length > 0) {
-    const lastPoint = {
-      ...originalLocations[originalLocations.length - 1],
-      // Keep existing metadata fields as they were initialized (null)
-    };
-    finalLocations.push(lastPoint);
-    console.log(`[LocationEnhancer] Last point preserved unchanged`);
-  }
   
   // Sort final locations by timestamp to ensure proper order
   finalLocations.sort((a, b) => {
