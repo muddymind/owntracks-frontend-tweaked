@@ -45,6 +45,17 @@
           {{ wifi.ssid }}
           <span v-if="wifi.bssid">({{ wifi.bssid }})</span>
         </li>
+        <li v-if="nodeEventType" :title="$t('Event Type')">
+          <TagIcon size="1x" aria-hidden="true" role="img" />
+          {{ nodeEventType === 'visit' ? $t('Visit') : $t('Trip') }} #{{ nodeEventId }}
+        </li>
+        <li v-if="nodeEventStart && nodeEventEnd" :title="$t('Event Duration')">
+          <ClockIcon size="1x" aria-hidden="true" role="img" />
+          {{ new Date(nodeEventStart * 1000).toLocaleTimeString($config.locale) }} - 
+          {{ new Date(nodeEventEnd * 1000).toLocaleTimeString($config.locale) }}
+          <br />
+          <small>{{ formatDuration(nodeEventEnd - nodeEventStart) }}</small>
+        </li>
       </ul>
     </div>
     <div v-if="regions.length" class="regions">
@@ -60,6 +71,7 @@ import {
   ClockIcon,
   HomeIcon,
   MapPinIcon,
+  TagIcon,
   WifiIcon,
   ZapIcon,
 } from "vue-feather-icons";
@@ -72,6 +84,7 @@ export default {
     ClockIcon,
     HomeIcon,
     MapPinIcon,
+    TagIcon,
     WifiIcon,
     ZapIcon,
     LPopup,
@@ -141,6 +154,22 @@ export default {
       type: Object,
       default: () => {},
     },
+    nodeEventType: {
+      type: String,
+      default: null,
+    },
+    nodeEventId: {
+      type: Number,
+      default: null,
+    },
+    nodeEventStart: {
+      type: Number,
+      default: null,
+    },
+    nodeEventEnd: {
+      type: Number,
+      default: null,
+    },
   },
   computed: {
     /**
@@ -160,6 +189,26 @@ export default {
      */
     deviceName() {
       return this.name ? this.name : `${this.user}/${this.device}`;
+    },
+  },
+  methods: {
+    /**
+     * Format duration in seconds to human readable format
+     * @param {number} seconds - Duration in seconds
+     * @returns {string} Formatted duration
+     */
+    formatDuration(seconds) {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = Math.floor(seconds % 60);
+      
+      if (hours > 0) {
+        return `${hours}h ${minutes}m ${secs}s`;
+      } else if (minutes > 0) {
+        return `${minutes}m ${secs}s`;
+      } else {
+        return `${secs}s`;
+      }
     },
   },
 };

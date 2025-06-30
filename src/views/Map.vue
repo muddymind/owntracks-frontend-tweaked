@@ -75,6 +75,10 @@
               :regions="l.inregions"
               :wifi="{ ssid: l.SSID, bssid: l.BSSID }"
               :address="l.addr"
+              :node-event-type="l.node_event_type"
+              :node-event-id="l.node_event_id"
+              :node-event-start="l.node_event_start"
+              :node-event-end="l.node_event_end"
             ></LDeviceLocationPopup>
           </LCircleMarker>
         </template>
@@ -113,6 +117,10 @@
           :wifi="{ ssid: l.SSID, bssid: l.BSSID }"
           :options="{ className: 'leaflet-popup--for-pin', maxWidth: 400 }"
           :address="l.addr"
+          :node-event-type="l.node_event_type"
+          :node-event-id="l.node_event_id"
+          :node-event-start="l.node_event_start"
+          :node-event-end="l.node_event_end"
         />
       </LMarker>
     </template>

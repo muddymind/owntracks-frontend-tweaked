@@ -2,22 +2,28 @@ import L from "leaflet";
 
 import config from "@/config";
 import { distanceBetweenCoordinates } from "@/util";
+import { enhanceLocationData } from "./locationEnhancer";
 
 /**
  * Apply filters to the selected users' and devices' location histories.
+ * This function now includes data enhancement before applying filters.
  *
  * @param {State} state
  * @param {LocationHistory} state.locationHistory
  *   Location history of selected users and devices
- * @returns {LocationHistory} Filtered location history
+ * @returns {LocationHistory} Enhanced and filtered location history
  */
 const filteredLocationHistory = (state) => {
+  // First, enhance the raw location data
+  const enhancedLocationHistory = enhanceLocationData(state.locationHistory);
+  
+  // Then apply the existing filters
   const locationHistory = {};
-  Object.keys(state.locationHistory).forEach((user) => {
+  Object.keys(enhancedLocationHistory).forEach((user) => {
     locationHistory[user] = {};
-    Object.keys(state.locationHistory[user]).forEach((device) => {
+    Object.keys(enhancedLocationHistory[user]).forEach((device) => {
       locationHistory[user][device] = [];
-      state.locationHistory[user][device].forEach((location) => {
+      enhancedLocationHistory[user][device].forEach((location) => {
         if (
           config.filters.minAccuracy !== null &&
           location.acc > config.filters.minAccuracy
