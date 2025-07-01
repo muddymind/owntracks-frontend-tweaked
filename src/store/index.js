@@ -36,7 +36,7 @@ export default new Vuex.Store({
     requestAbortController: null,
     clustering: {
       enabled: true,
-      clusterRadius: 10,
+      clusterRadius: 20,
       minVisitClusterSize: 3,
       minTravelClusterSize: 7,
     },

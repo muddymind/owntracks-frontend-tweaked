@@ -44,5 +44,11 @@
   "30 days": "30 days",
   "3 months": "3 months",
   "6 months": "6 months",
-  "1 year": "1 year"
+  "1 year": "1 year",
+  "Clustering": "Clustering",
+  "Configure location clustering": "Configure location clustering",
+  "Enable clustering": "Enable clustering",
+  "Cluster radius": "Cluster radius",
+  "Min visit size": "Min visit size",
+  "Min travel size": "Min travel size"
 }

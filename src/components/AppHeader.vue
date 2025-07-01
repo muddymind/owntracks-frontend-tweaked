@@ -113,6 +113,7 @@
           </option>
         </select>
       </div>
+      <ClusteringControls />
     </nav>
     <nav class="header-item header-item-right">
       <div
@@ -163,6 +164,7 @@ import DatePicker from "vue2-datepicker";
 import "vue2-datepicker/index.css";
 
 import DropdownButton from "@/components/DropdownButton.vue";
+import ClusteringControls from "@/components/ClusteringControls.vue";
 import { DATE_TIME_FORMAT } from "@/constants";
 import * as types from "@/store/mutation-types";
 import { humanReadableDistance } from "@/util";
@@ -180,6 +182,7 @@ export default {
     SmartphoneIcon,
     UserIcon,
     DropdownButton,
+    ClusteringControls,
   },
   data() {
     return {

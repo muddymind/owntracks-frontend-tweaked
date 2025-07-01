@@ -47,14 +47,19 @@ const createDistantPoints = (baseLat, baseLon, count, startTimestamp = 1000) => 
 };
 
 // Test the full pipeline
-const testFullPipeline = (locations) => {
+const testFullPipeline = (locations, clusteringConfig = {
+  enabled: true,
+  clusterRadius: CLUSTER_RADIUS,
+  minVisitClusterSize: MIN_VISIT_CLUSTER_SIZE,
+  minTravelClusterSize: MIN_TRAVEL_CLUSTER_SIZE
+}) => {
   const testHistory = {
     testUser: {
       testDevice: locations
     }
   };
   
-  const result = enhanceLocationData(testHistory);
+  const result = enhanceLocationData(testHistory, clusteringConfig);
   return result.testUser.testDevice;
 };
 
@@ -237,6 +242,32 @@ describe('Location Clustering Functions', () => {
     expect(['visit', 'travel']).toContain(lastPoint.node_event_type);
     expect(lastPoint.lat).toBe(40.8000);
     expect(lastPoint.lon).toBe(-74.1000);
+  });
+  
+  test('should return original data when clustering is disabled', () => {
+    const locations = [
+      ...createClusteredPoints(40.7128, -74.0060, 5, 1000),
+      createPoint(40.8000, -74.1000, 6000)
+    ];
+    
+    // Test with clustering disabled
+    const clusteringConfig = {
+      enabled: false,
+      clusterRadius: CLUSTER_RADIUS,
+      minVisitClusterSize: MIN_VISIT_CLUSTER_SIZE,
+      minTravelClusterSize: MIN_TRAVEL_CLUSTER_SIZE
+    };
+    
+    const result = testFullPipeline(locations, clusteringConfig);
+    
+    // Should return all original points with null metadata
+    expect(result).toHaveLength(6);
+    result.forEach(point => {
+      expect(point.node_event_type).toBeNull();
+      expect(point.node_event_id).toBeNull();
+      expect(point.node_event_start).toBeNull();
+      expect(point.node_event_end).toBeNull();
+    });
   });
 });
 

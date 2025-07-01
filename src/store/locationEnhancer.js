@@ -73,7 +73,7 @@ const calculateDistanceInMeters = (point1, point2) => {
  * @returns {LocationHistory}
  */
 const clusterLocationPoints = (locationHistory, clusteringConfig) => {
-  const CLUSTER_RADIUS = clusteringConfig.clusterRadius || 10;
+  const CLUSTER_RADIUS = clusteringConfig.clusterRadius || 20;
   const MIN_VISIT_CLUSTER_SIZE = clusteringConfig.minVisitClusterSize || 3;
   const MIN_TRAVEL_CLUSTER_SIZE = clusteringConfig.minTravelClusterSize || 7;
 
@@ -269,7 +269,7 @@ const createTravelCluster = (workingLocations, startIndex, minVisitClusterSize) 
  */
 const trySkipTransientPoints = (workingLocations, startIndex, centerLat, centerLon, clusterRadius, minTravelClusterSize) => {
   // Increase lookahead to be more aggressive in finding return points
-  const maxLookahead = minTravelClusterSize;//Math.max(minTravelClusterSize * 2, 10); // Look ahead further
+  const maxLookahead = minTravelClusterSize+1;//Math.max(minTravelClusterSize * 2, 10); // Look ahead further
   
   // Look ahead up to maxLookahead points to see if we return to cluster
   for (let k = startIndex; k < Math.min(startIndex + maxLookahead, workingLocations.length); k++) {
