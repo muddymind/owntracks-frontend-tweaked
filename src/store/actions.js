@@ -257,6 +257,46 @@ const setEndDateTime = async ({ commit, dispatch }, endDateTime) => {
   await dispatch("reloadData");
 };
 
+/**
+ * Set clustering enabled state and reload data
+ *
+ * @param {Boolean} enabled Whether clustering is enabled
+ */
+const setClusteringEnabled = async ({ commit, dispatch }, enabled) => {
+  commit(types.SET_CLUSTERING_ENABLED, enabled);
+  await dispatch("reloadData");
+};
+
+/**
+ * Set cluster radius and reload data
+ *
+ * @param {Number} radius Cluster radius in meters
+ */
+const setClusterRadius = async ({ commit, dispatch }, radius) => {
+  commit(types.SET_CLUSTER_RADIUS, radius);
+  await dispatch("reloadData");
+};
+
+/**
+ * Set minimum visit cluster size and reload data
+ *
+ * @param {Number} size Minimum visit cluster size
+ */
+const setMinVisitClusterSize = async ({ commit, dispatch }, size) => {
+  commit(types.SET_MIN_VISIT_CLUSTER_SIZE, size);
+  await dispatch("reloadData");
+};
+
+/**
+ * Set minimum travel cluster size and reload data
+ *
+ * @param {Number} size Minimum travel cluster size
+ */
+const setMinTravelClusterSize = async ({ commit, dispatch }, size) => {
+  commit(types.SET_MIN_TRAVEL_CLUSTER_SIZE, size);
+  await dispatch("reloadData");
+};
+
 export default {
   populateStateFromQuery,
   loadData,
@@ -271,4 +311,8 @@ export default {
   setSelectedDevice,
   setStartDateTime,
   setEndDateTime,
+  setClusteringEnabled,
+  setClusterRadius,
+  setMinVisitClusterSize,
+  setMinTravelClusterSize,
 };

@@ -14,8 +14,8 @@ import { enhanceLocationData } from "./locationEnhancer";
  * @returns {LocationHistory} Enhanced and filtered location history
  */
 const filteredLocationHistory = (state) => {
-  // First, enhance the raw location data
-  const enhancedLocationHistory = enhanceLocationData(state.locationHistory);
+  // First, enhance the raw location data with clustering configuration
+  const enhancedLocationHistory = enhanceLocationData(state.locationHistory, state.clustering);
   
   // Then apply the existing filters
   const locationHistory = {};

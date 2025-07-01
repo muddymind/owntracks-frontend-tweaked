@@ -52,4 +52,16 @@ export default {
   [types.SET_REQUEST_ABORT_CONTROLLER](state, requestAbortController) {
     state.requestAbortController = requestAbortController;
   },
+  [types.SET_CLUSTERING_ENABLED](state, enabled) {
+    state.clustering.enabled = enabled;
+  },
+  [types.SET_CLUSTER_RADIUS](state, radius) {
+    state.clustering.clusterRadius = radius;
+  },
+  [types.SET_MIN_VISIT_CLUSTER_SIZE](state, size) {
+    state.clustering.minVisitClusterSize = size;
+  },
+  [types.SET_MIN_TRAVEL_CLUSTER_SIZE](state, size) {
+    state.clustering.minTravelClusterSize = size;
+  },
 };

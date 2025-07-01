@@ -9,10 +9,16 @@
  * This is the main entry point for all location data processing
  * 
  * @param {LocationHistory} rawLocationHistory - Raw location data from the API
+ * @param {Object} clusteringConfig - Clustering configuration object
+ * @param {boolean} clusteringConfig.enabled - Whether clustering is enabled
+ * @param {number} clusteringConfig.clusterRadius - Cluster radius in meters
+ * @param {number} clusteringConfig.minVisitClusterSize - Minimum visit cluster size
+ * @param {number} clusteringConfig.minTravelClusterSize - Minimum travel cluster size
  * @returns {LocationHistory} Processed location data
  */
-export const enhanceLocationData = (rawLocationHistory) => {
+export const enhanceLocationData = (rawLocationHistory, clusteringConfig = {}) => {
   console.log('[LocationEnhancer] Raw location data:', rawLocationHistory);
+  console.log('[LocationEnhancer] Clustering config:', clusteringConfig);
 
   // Add metadata fields to all points
   Object.keys(rawLocationHistory).forEach((user) => {
@@ -26,10 +32,14 @@ export const enhanceLocationData = (rawLocationHistory) => {
     });
   });
   
-  // Cluster location points
-  const clusteredData = clusterLocationPoints(rawLocationHistory);
-
-  return clusteredData;
+  // Apply clustering if enabled
+  if (clusteringConfig.enabled) {
+    const clusteredData = clusterLocationPoints(rawLocationHistory, clusteringConfig);
+    return clusteredData;
+  } else {
+    // Return original data without clustering
+    return rawLocationHistory;
+  }
 };
 
 /**
@@ -59,12 +69,13 @@ const calculateDistanceInMeters = (point1, point2) => {
  * Analyzes location data to identify patterns of movement and stationary periods
  * 
  * @param {LocationHistory} locationHistory 
+ * @param {Object} clusteringConfig - Clustering configuration
  * @returns {LocationHistory}
  */
-const clusterLocationPoints = (locationHistory) => {
-  const CLUSTER_RADIUS = 25; // 25 meters visit cluster radius
-  const MIN_VISIT_CLUSTER_SIZE = 3; // minimum number of points to form a visit cluster
-  const MIN_TRAVEL_CLUSTER_SIZE = 5; // minimum number of points to form a travel cluster
+const clusterLocationPoints = (locationHistory, clusteringConfig) => {
+  const CLUSTER_RADIUS = clusteringConfig.clusterRadius || 10;
+  const MIN_VISIT_CLUSTER_SIZE = clusteringConfig.minVisitClusterSize || 3;
+  const MIN_TRAVEL_CLUSTER_SIZE = clusteringConfig.minTravelClusterSize || 7;
 
   const filtered = {};
   
@@ -81,9 +92,12 @@ const clusterLocationPoints = (locationHistory) => {
         return timeA - timeB;
       });
       
-      console.log(`[LocationEnhancer] ${user}/${device}: Analyzing ${locations.length} points for clusters`);
+      console.log(`[LocationEnhancer] ${user}/${device}: Analyzing ${locations.length} points for clusters (radius=${CLUSTER_RADIUS}m, minVisit=${MIN_VISIT_CLUSTER_SIZE}, minTravel=${MIN_TRAVEL_CLUSTER_SIZE})`);
       
       const clusters = findLocationClusters(locations, CLUSTER_RADIUS, MIN_VISIT_CLUSTER_SIZE, MIN_TRAVEL_CLUSTER_SIZE);
+      
+      // Merge nearby visit clusters that should be considered as one location
+      //const mergedVisitClusters = mergeNearbyVisitClusters(clusters, CLUSTER_RADIUS * 2);
       
       // Merge consecutive travel clusters
       const mergedClusters = mergeConsecutiveTravelClusters(clusters);
@@ -254,7 +268,8 @@ const createTravelCluster = (workingLocations, startIndex, minVisitClusterSize) 
  * @returns {Object} Result with shouldSkip boolean and continueFromIndex
  */
 const trySkipTransientPoints = (workingLocations, startIndex, centerLat, centerLon, clusterRadius, minTravelClusterSize) => {
-  const maxLookahead = minTravelClusterSize - 1;
+  // Increase lookahead to be more aggressive in finding return points
+  const maxLookahead = minTravelClusterSize;//Math.max(minTravelClusterSize * 2, 10); // Look ahead further
   
   // Look ahead up to maxLookahead points to see if we return to cluster
   for (let k = startIndex; k < Math.min(startIndex + maxLookahead, workingLocations.length); k++) {
@@ -323,6 +338,81 @@ const mergeConsecutiveTravelClusters = (clusters) => {
       // Visit cluster, add as-is
       mergedClusters.push(currentCluster);
       i++;
+    }
+  }
+  
+  return mergedClusters;
+};
+
+/**
+ * Merge nearby visit clusters that should be considered as one location
+ * 
+ * @param {Array} clusters - Array of clusters
+ * @param {number} mergeRadius - Maximum distance between visit cluster centers to merge (meters)
+ * @returns {Array} Array of clusters with nearby visit clusters merged
+ */
+const mergeNearbyVisitClusters = (clusters, mergeRadius = 50) => {
+  if (clusters.length <= 1) return clusters;
+  
+  const mergedClusters = [];
+  const processed = new Set();
+  
+  for (let i = 0; i < clusters.length; i++) {
+    if (processed.has(i)) continue;
+    
+    const currentCluster = clusters[i];
+    
+    if (currentCluster.type === 'visit') {
+      // Look for nearby visit clusters to merge
+      const toMerge = [i];
+      
+      for (let j = i + 1; j < clusters.length; j++) {
+        if (processed.has(j) || clusters[j].type !== 'visit') continue;
+        
+        const distance = calculateDistanceInMeters(
+          { lat: currentCluster.centerLat, lon: currentCluster.centerLon },
+          { lat: clusters[j].centerLat, lon: clusters[j].centerLon }
+        );
+        
+        if (distance <= mergeRadius) {
+          toMerge.push(j);
+        }
+      }
+      
+      if (toMerge.length > 1) {
+        // Merge multiple visit clusters
+        const allPointIndices = [];
+        let minStartTime = Infinity;
+        let maxEndTime = -Infinity;
+        
+        toMerge.forEach(clusterIndex => {
+          const cluster = clusters[clusterIndex];
+          allPointIndices.push(...cluster.pointIndices);
+          minStartTime = Math.min(minStartTime, cluster.startTime);
+          maxEndTime = Math.max(maxEndTime, cluster.endTime);
+          processed.add(clusterIndex);
+        });
+        
+        const mergedCluster = {
+          type: 'visit',
+          pointIndices: allPointIndices,
+          startTime: minStartTime,
+          endTime: maxEndTime,
+          centerLat: currentCluster.centerLat, // Will be recalculated in processClusterToLocations
+          centerLon: currentCluster.centerLon  // Will be recalculated in processClusterToLocations
+        };
+        
+        mergedClusters.push(mergedCluster);
+        console.log(`[LocationEnhancer] Merged ${toMerge.length} nearby visit clusters (${allPointIndices.length} total points)`);
+      } else {
+        // Single visit cluster, add as-is
+        mergedClusters.push(currentCluster);
+        processed.add(i);
+      }
+    } else {
+      // Travel cluster, add as-is
+      mergedClusters.push(currentCluster);
+      processed.add(i);
     }
   }
   
@@ -428,6 +518,7 @@ export const _internal = {
   calculateDistanceInMeters,
   findLocationClusters,
   mergeConsecutiveTravelClusters,
+  mergeNearbyVisitClusters,
   tryCreateVisitCluster,
   createTravelCluster,
   trySkipTransientPoints,

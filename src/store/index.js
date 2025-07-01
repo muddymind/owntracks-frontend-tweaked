@@ -34,6 +34,12 @@ export default new Vuex.Store({
     elevationGain: 0,
     elevationLoss: 0,
     requestAbortController: null,
+    clustering: {
+      enabled: true,
+      clusterRadius: 10,
+      minVisitClusterSize: 3,
+      minTravelClusterSize: 7,
+    },
   },
   getters,
   mutations,
