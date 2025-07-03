@@ -59,10 +59,7 @@
                 
                 <div v-else class="travel-info">
                   <div class="travel-duration">
-                    {{ $t('Traveled for') }} {{ formatDuration(event.duration) }}
-                  </div>
-                  <div class="points-count">
-                    {{ event.pointsCount }} {{ $t('points') }}
+                    {{ formatDistanceAndDuration(event.distance, event.duration) }}
                   </div>
                 </div>
               </div>
@@ -84,6 +81,7 @@
 <script>
 import { mapGetters } from "vuex";
 import { ListIcon, XIcon } from "vue-feather-icons";
+import { distanceBetweenCoordinates } from "@/util";
 
 export default {
   name: "TimelineFlyout",
@@ -107,10 +105,13 @@ export default {
         Object.keys(this.filteredLocationHistory[user]).forEach(device => {
           const locations = this.filteredLocationHistory[user][device];
           
+          // Sort locations by timestamp to ensure proper order
+          const sortedLocations = locations.slice().sort((a, b) => a.tst - b.tst);
+          
           // Group locations by their event type and ID
           const eventGroups = {};
           
-          locations.forEach(location => {
+          sortedLocations.forEach(location => {
             if (location.node_event_type && location.node_event_id) {
               const key = `${location.node_event_type}-${location.node_event_id}`;
               
@@ -128,8 +129,11 @@ export default {
             }
           });
           
-          // Convert groups to events
-          Object.values(eventGroups).forEach(group => {
+          // Sort event groups by start time to process them in chronological order
+          const sortedEventGroups = Object.values(eventGroups).sort((a, b) => a.startTime - b.startTime);
+          
+          // Convert groups to events and calculate travel distances properly
+          sortedEventGroups.forEach((group, groupIndex) => {
             const duration = group.endTime - group.startTime;
             
             if (group.type === 'visit') {
@@ -148,10 +152,46 @@ export default {
                 pointsCount: group.locations.length
               });
             } else if (group.type === 'travel') {
+              // Calculate distance from previous visit to next visit
+              let totalDistance = 0;
+              
+              // Find the previous visit event
+              const prevVisitGroup = groupIndex > 0 ? sortedEventGroups[groupIndex - 1] : null;
+              const nextVisitGroup = groupIndex < sortedEventGroups.length - 1 ? sortedEventGroups[groupIndex + 1] : null;
+              
+              // Get all location points for this travel segment including boundaries
+              let travelPoints = [];
+              
+              // Add last point from previous visit if it exists
+              if (prevVisitGroup && prevVisitGroup.type === 'visit') {
+                const lastPrevPoint = prevVisitGroup.locations[prevVisitGroup.locations.length - 1];
+                travelPoints.push(lastPrevPoint);
+              }
+              
+              // Add all travel points
+              travelPoints = travelPoints.concat(group.locations);
+              
+              // Add first point from next visit if it exists
+              if (nextVisitGroup && nextVisitGroup.type === 'visit') {
+                const firstNextPoint = nextVisitGroup.locations[0];
+                travelPoints.push(firstNextPoint);
+              }
+              
+              // Calculate total distance through all segments
+              for (let i = 1; i < travelPoints.length; i++) {
+                const prev = travelPoints[i - 1];
+                const curr = travelPoints[i];
+                totalDistance += distanceBetweenCoordinates(
+                  { lat: prev.lat, lng: prev.lon },
+                  { lat: curr.lat, lng: curr.lon }
+                );
+              }
+              
               events.push({
                 type: 'travel',
                 id: group.id,
                 duration: duration,
+                distance: totalDistance,
                 startTime: group.startTime,
                 endTime: group.endTime,
                 pointsCount: group.locations.length
@@ -186,6 +226,12 @@ export default {
       } else {
         return `${secs}s`;
       }
+    },
+    
+    formatDistanceAndDuration(distanceInMeters, durationInSeconds) {
+      const distanceInKm = (distanceInMeters / 1000).toFixed(1);
+      const duration = this.formatDuration(durationInSeconds);
+      return `${distanceInKm}km • ${duration}`;
     },
     
     formatEventTime(startTime, endTime) {
@@ -395,11 +441,6 @@ export default {
     .travel-duration {
       color: #28a745;
       font-weight: 500;
-    }
-    
-    .points-count {
-      color: #666;
-      font-size: 0.8rem;
     }
   }
   
