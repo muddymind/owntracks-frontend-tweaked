@@ -217,7 +217,7 @@ export default {
       }
     },
     filteredLocationHistory() {
-      this.fitView();
+      // this.fitView();
     },
   },
   mounted() {

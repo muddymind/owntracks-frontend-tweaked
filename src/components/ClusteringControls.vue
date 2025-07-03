@@ -30,13 +30,13 @@
             <input
               type="range"
               min="5"
-              max="20"
+              max="50"
               step="1"
               :value="clustering.clusterRadius"
               @input="setClusterRadius(parseInt($event.target.value))"
               class="slider"
             />
-            <div class="slider-info">5m – 30m</div>
+            <div class="slider-info">5m – 50m</div>
           </div>
 
           <div class="control-group">
@@ -62,13 +62,13 @@
             <input
               type="range"
               min="2"
-              max="15"
+              max="30"
               step="1"
               :value="clustering.minTravelClusterSize"
               @input="setMinTravelClusterSize(parseInt($event.target.value))"
               class="slider"
             />
-            <div class="slider-info">2 – 15 points</div>
+            <div class="slider-info">2 – 30 points</div>
           </div>
         </template>
       </div>
