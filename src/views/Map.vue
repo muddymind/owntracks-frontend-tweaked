@@ -289,6 +289,20 @@ export default {
 .map-container {
   position: relative;
   width: 100%;
+  height: calc(100vh - 80px); /* Subtract approximate header height */
+  overflow: hidden; /* Prevent scrollbars */
+}
+
+/* Ensure the Leaflet map takes full height */
+.map-container :deep(.leaflet-container) {
+  width: 100%;
   height: 100%;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .map-container {
+    height: calc(100vh - 60px); /* Smaller header on mobile */
+  }
 }
 </style>
