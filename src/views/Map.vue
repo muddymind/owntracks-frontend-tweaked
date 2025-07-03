@@ -1,12 +1,13 @@
 <template>
-  <LMap
-    ref="map"
-    :center="map.center"
-    :zoom="map.zoom"
-    :options="{ zoomControl: false }"
-    @update:center="setMapCenter"
-    @update:zoom="setMapZoom"
-  >
+  <div class="map-container">
+    <LMap
+      ref="map"
+      :center="map.center"
+      :zoom="map.zoom"
+      :options="{ zoomControl: false }"
+      @update:center="setMapCenter"
+      @update:zoom="setMapZoom"
+    >
     <LControlZoom
       v-if="controls.zoom.display"
       :position="controls.zoom.position"
@@ -136,6 +137,10 @@
       />
     </template>
   </LMap>
+  
+  <!-- Timeline Flyout Component -->
+  <TimelineFlyout />
+  </div>
 </template>
 
 <script>
@@ -157,6 +162,7 @@ import * as types from "@/store/mutation-types";
 import LCustomMarker from "@/components/LCustomMarker";
 import LHeatmap from "@/components/LHeatmap.vue";
 import LDeviceLocationPopup from "@/components/LDeviceLocationPopup.vue";
+import TimelineFlyout from "@/components/TimelineFlyout.vue";
 
 export default {
   components: {
@@ -171,6 +177,7 @@ export default {
     LDeviceLocationPopup,
     LHeatmap,
     LTooltip,
+    TimelineFlyout,
   },
   data() {
     return {
@@ -277,3 +284,11 @@ export default {
   },
 };
 </script>
+
+<style lang="scss" scoped>
+.map-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+</style>
