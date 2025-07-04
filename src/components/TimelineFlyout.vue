@@ -26,24 +26,27 @@
         <div v-else class="timeline-list">
           <div
             v-for="(event, index) in timelineEvents"
-            :key="`${event.type}-${event.id}-${index}`"
+            :key="`${event.user || 'unknown'}-${event.device || 'unknown'}-${event.type}-${event.id || 'unknown'}-${event.startTime || 0}-${index}`"
             class="timeline-item"
             :class="{ 'is-visit': event.type === 'visit', 'is-travel': event.type === 'travel' }"
           >
-            <!-- Timeline Line and Dot -->
+            <!-- Timeline Line and Dot/Icon -->
             <div class="timeline-marker">
               <div class="timeline-line" v-if="index < timelineEvents.length - 1"></div>
-              <div class="timeline-dot" :class="event.type"></div>
+              <div v-if="event.type === 'visit'" class="timeline-dot visit"></div>
+              <div v-else class="timeline-icon travel">
+                <FontAwesomeIcon :icon="getTravelIcon(event)" />
+              </div>
             </div>
             
             <!-- Event Content -->
             <div class="timeline-details">
               <div class="event-type">
                 <strong v-if="event.type === 'visit'">
-                  {{ $t('Visit') }} #{{ event.id }}
+                  {{ getVisitDisplayName(event) }}
                 </strong>
                 <strong v-else>
-                  {{ $t('Trip') }} #{{ event.id }}
+                  {{ getTravelDisplayName(event) }}
                 </strong>
               </div>
               
@@ -81,23 +84,49 @@
 <script>
 import { mapGetters } from "vuex";
 import { ListIcon, XIcon } from "vue-feather-icons";
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { library } from '@fortawesome/fontawesome-svg-core';
+import { faWalking, faCar, faPlane, faPersonWalking, faUser } from '@fortawesome/free-solid-svg-icons';
+
+// Add icons to the library
+library.add(faWalking, faCar, faPlane, faPersonWalking, faUser);
 import { distanceBetweenCoordinates } from "@/util";
+import { reverseGeocodeWithRateLimit } from "@/geocoding";
 
 export default {
   name: "TimelineFlyout",
   components: {
     ListIcon,
     XIcon,
+    FontAwesomeIcon,
   },
   data() {
     return {
       isOpen: false,
+      geocodedEvents: {}, // Use object for better reactivity
+      isGeocoding: false, // Track if geocoding is in progress
     };
   },
   computed: {
     ...mapGetters(["filteredLocationHistory"]),
     
     timelineEvents() {
+      const events = this.generateTimelineEvents();
+      
+      // Only start geocoding when timeline is open and not already geocoding
+      if (this.isOpen && !this.isGeocoding) {
+        // Use nextTick to prevent calling during computed evaluation
+        this.$nextTick(() => {
+          this.geocodeVisitLocations(events);
+        });
+      }
+      
+      // Return events with any already geocoded names
+      return this.mergeGeocodedNames(events);
+    }
+  },
+  methods: {
+    generateTimelineEvents() {
       const events = [];
       
       // Process all users and devices
@@ -111,8 +140,19 @@ export default {
           // Group locations by their event type and ID
           const eventGroups = {};
           
+          let validEventCount = 0;
+          let invalidEventCount = 0;
+          
           sortedLocations.forEach(location => {
-            if (location.node_event_type && location.node_event_id) {
+            // Safety check: only process locations with valid event metadata
+            if (location.node_event_type && 
+                location.node_event_id !== null && 
+                location.node_event_id !== undefined &&
+                location.node_event_start !== null && 
+                location.node_event_start !== undefined &&
+                location.node_event_end !== null && 
+                location.node_event_end !== undefined) {
+              
               const key = `${location.node_event_type}-${location.node_event_id}`;
               
               if (!eventGroups[key]) {
@@ -126,14 +166,36 @@ export default {
               }
               
               eventGroups[key].locations.push(location);
+              validEventCount++;
+            } else {
+              // Log locations that don't have proper event metadata for debugging
+              console.warn('[Timeline] Location missing event metadata:', {
+                type: location.node_event_type,
+                id: location.node_event_id,
+                start: location.node_event_start,
+                end: location.node_event_end,
+                timestamp: location.tst
+              });
+              invalidEventCount++;
             }
           });
+          
+          // Only log if there are invalid events to avoid spam
+          if (invalidEventCount > 0) {
+            console.warn(`[Timeline] ${user}/${device}: ${invalidEventCount} locations missing event metadata`);
+          }
           
           // Sort event groups by start time to process them in chronological order
           const sortedEventGroups = Object.values(eventGroups).sort((a, b) => a.startTime - b.startTime);
           
           // Convert groups to events and calculate travel distances properly
           sortedEventGroups.forEach((group, groupIndex) => {
+            // Safety check: ensure group has valid ID
+            if (group.id === null || group.id === undefined) {
+              console.warn('[Timeline] Skipping event group with undefined ID:', group);
+              return;
+            }
+            
             const duration = group.endTime - group.startTime;
             
             if (group.type === 'visit') {
@@ -141,16 +203,36 @@ export default {
               const avgLat = group.locations.reduce((sum, loc) => sum + loc.lat, 0) / group.locations.length;
               const avgLon = group.locations.reduce((sum, loc) => sum + loc.lon, 0) / group.locations.length;
               
-              events.push({
+              // Check if any location in the group already has address/POI data
+              let existingLocationName = null;
+              for (const loc of group.locations) {
+                if (loc.poi) {
+                  existingLocationName = loc.poi;
+                  break;
+                } else if (loc.addr) {
+                  existingLocationName = loc.addr;
+                  break;
+                } else if (loc.inregions && loc.inregions.length > 0) {
+                  existingLocationName = loc.inregions[0];
+                  break;
+                }
+              }
+              
+              const visitEvent = {
                 type: 'visit',
                 id: group.id,
+                user: user,
+                device: device,
                 lat: avgLat,
                 lon: avgLon,
                 duration: duration,
                 startTime: group.startTime,
                 endTime: group.endTime,
-                pointsCount: group.locations.length
-              });
+                pointsCount: group.locations.length,
+                locationName: existingLocationName // Will be updated with geocoded name if needed
+              };
+              
+              events.push(visitEvent);
             } else if (group.type === 'travel') {
               // Calculate distance from previous visit to next visit
               let totalDistance = 0;
@@ -190,6 +272,8 @@ export default {
               events.push({
                 type: 'travel',
                 id: group.id,
+                user: user,
+                device: device,
                 duration: duration,
                 distance: totalDistance,
                 startTime: group.startTime,
@@ -202,10 +286,92 @@ export default {
       });
       
       // Sort events by start time
-      return events.sort((a, b) => a.startTime - b.startTime);
-    }
-  },
-  methods: {
+      const sortedEvents = events.sort((a, b) => a.startTime - b.startTime);
+      
+      // Only log if there are events to show
+      if (sortedEvents.length > 0) {
+        console.log('[Timeline] Generated', sortedEvents.length, 'timeline events');
+      }
+      
+      return sortedEvents;
+    },
+    
+    async geocodeVisitLocations(events) {
+      if (this.isGeocoding) {
+        console.log('[Timeline] Geocoding already in progress, skipping');
+        return; // Prevent multiple concurrent geocoding operations
+      }
+      
+      const visitsNeedingGeocode = events.filter(event => 
+        event.type === 'visit' && 
+        !event.locationName && 
+        !this.geocodedEvents[`${event.user}-${event.device}-visit-${event.id}`]
+      );
+      
+      if (visitsNeedingGeocode.length === 0) {
+        console.log('[Timeline] No visits need geocoding');
+        return;
+      }
+      
+      console.log('[Timeline] Starting geocoding for', visitsNeedingGeocode.length, 'visits');
+      this.isGeocoding = true;
+      
+      try {
+        // Process visits using centralized queue with limited concurrency
+        console.log('[Timeline] Processing', visitsNeedingGeocode.length, 'visits for geocoding');
+        
+        // Limit concurrent requests to prevent overwhelming the queue
+        const BATCH_SIZE = 2; // Reduced from 3 to be safer
+        for (let i = 0; i < visitsNeedingGeocode.length; i += BATCH_SIZE) {
+          const batch = visitsNeedingGeocode.slice(i, i + BATCH_SIZE);
+          
+          const batchPromises = batch.map(async (visit) => {
+            try {
+              console.log('[Timeline] Starting geocoding for visit', visit.id);
+              const geocodedName = await reverseGeocodeWithRateLimit(visit.lat, visit.lon);
+              
+              if (geocodedName) {
+                // Store in reactive geocoded events object
+                this.$set(this.geocodedEvents, `${visit.user}-${visit.device}-visit-${visit.id}`, geocodedName);
+                
+                console.log('[Timeline] Geocoded visit', visit.id, 'to:', geocodedName);
+              }
+            } catch (error) {
+              console.warn('[Timeline] Failed to geocode visit', visit.id, ':', error);
+            }
+          });
+          
+          // Wait for batch to complete before starting next batch
+          try {
+            await Promise.allSettled(batchPromises);
+            console.log('[Timeline] Completed batch', Math.floor(i / BATCH_SIZE) + 1, 'of', Math.ceil(visitsNeedingGeocode.length / BATCH_SIZE));
+          } catch (batchError) {
+            console.warn('[Timeline] Error in batch processing:', batchError);
+          }
+        }
+        
+        console.log('[Timeline] All geocoding complete');
+        
+      } catch (error) {
+        console.warn('[Timeline] Error during geocoding:', error);
+      } finally {
+        this.isGeocoding = false;
+      }
+    },
+    
+    mergeGeocodedNames(events) {
+      return events.map(event => {
+        if (event.type === 'visit' && !event.locationName) {
+          // Check if we have a geocoded name for this visit
+          const geocodedName = this.geocodedEvents[`${event.user}-${event.device}-visit-${event.id}`];
+          
+          if (geocodedName) {
+            return { ...event, locationName: geocodedName };
+          }
+        }
+        return event;
+      });
+    },
     toggleFlyout() {
       this.isOpen = !this.isOpen;
     },
@@ -245,6 +411,60 @@ export default {
       };
       
       return `${start.toLocaleTimeString(this.$config.locale, timeOptions)} - ${end.toLocaleTimeString(this.$config.locale, timeOptions)}`;
+    },
+    
+    getVisitDisplayName(event) {
+      if (event.locationName) {
+        return event.locationName;
+      }
+      
+      // Safety check for event.id
+      if (!event.id) {
+        return `${this.$t('Visit')} (${this.$t('Loading...')})`;
+      }
+      
+      // Check if this visit is currently being geocoded
+      const hasGeocodedName = this.geocodedEvents[`${event.user}-${event.device}-visit-${event.id}`];
+      const isBeingGeocoded = this.isGeocoding && !hasGeocodedName;
+      
+      if (isBeingGeocoded) {
+        return `${this.$t('Visit')} #${event.id} (${this.$t('Loading...')})`;
+      }
+      
+      // Fallback to default name
+      return `${this.$t('Visit')} #${event.id}`;
+    },
+    
+    getTravelDisplayName(event) {
+      // Calculate speed in km/h
+      const durationInHours = event.duration / 3600; // Convert seconds to hours
+      const distanceInKm = event.distance / 1000; // Convert meters to km
+      const speedKmh = durationInHours > 0 ? distanceInKm / durationInHours : 0;
+      
+      // Return appropriate display name based on speed
+      if (speedKmh <= 10) {
+        return this.$t('Walking');
+      } else if (speedKmh <= 200) {
+        return this.$t('Driving');
+      } else {
+        return this.$t('Flying');
+      }
+    },
+    
+    getTravelIcon(event) {
+      // Calculate speed in km/h
+      const durationInHours = event.duration / 3600; // Convert seconds to hours
+      const distanceInKm = event.distance / 1000; // Convert meters to km
+      const speedKmh = durationInHours > 0 ? distanceInKm / durationInHours : 0;
+      
+      // Return appropriate Font Awesome icon based on speed
+      if (speedKmh <= 10) {
+        return faPersonWalking; // Walking icon
+      } else if (speedKmh <= 200) {
+        return faCar; // Car icon
+      } else {
+        return faPlane; // Airplane icon
+      }
     }
   }
 };
@@ -401,10 +621,26 @@ export default {
       background: var(--color-primary, #007bff);
       box-shadow: 0 0 0 2px var(--color-primary, #007bff);
     }
+  }
+  
+  .timeline-icon {
+    position: absolute;
+    left: 50%;
+    top: 2px;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #28a745;
+    font-size: 12px;
     
     &.travel {
       background: #28a745;
-      box-shadow: 0 0 0 2px #28a745;
+      color: white;
     }
   }
 }

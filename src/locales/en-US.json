@@ -57,5 +57,11 @@
   "Visit": "Visit",
   "Trip": "Trip",
   "Traveled for": "Traveled for",
-  "points": "points"
+  "points": "points",
+  "Loading...": "Loading...",
+  "Walking": "Walking",
+  "Driving": "Driving",
+  "Flying": "Flying",
+  "Event Type": "Event Type",
+  "Event Duration": "Event Duration"
 }

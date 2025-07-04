@@ -1,5 +1,5 @@
 <template>
-  <LPopup :options="options">
+  <LPopup :options="options" @l-popupopen="onPopupOpen">
     <div class="device">{{ deviceName }}</div>
     <div class="wrapper">
       <img
@@ -28,9 +28,11 @@
           <br />
           {{ alt }}m
         </li>
-        <li v-if="address" :title="$t('Address')">
+        <li v-if="address || geocodedAddress || isGeocodingAddress" :title="$t('Address')">
           <HomeIcon size="1x" aria-hidden="true" role="img" />
-          {{ address }}
+          <span v-if="address">{{ address }}</span>
+          <span v-else-if="geocodedAddress">{{ geocodedAddress }}</span>
+          <span v-else-if="isGeocodingAddress">{{ $t('Loading...') }}</span>
         </li>
         <li v-if="typeof battery === 'number'" :title="$t('Battery')">
           <BatteryIcon size="1x" aria-hidden="true" role="img" />
@@ -76,6 +78,7 @@ import {
   ZapIcon,
 } from "vue-feather-icons";
 import { LPopup } from "vue2-leaflet";
+import { reverseGeocodeWithRateLimit } from "@/geocoding";
 
 export default {
   name: "LDeviceLocationPopup",
@@ -88,6 +91,12 @@ export default {
     WifiIcon,
     ZapIcon,
     LPopup,
+  },
+  data() {
+    return {
+      geocodedAddress: null,
+      isGeocodingAddress: false,
+    };
   },
   props: {
     user: {
@@ -208,6 +217,51 @@ export default {
         return `${minutes}m ${secs}s`;
       } else {
         return `${secs}s`;
+      }
+    },
+    
+    /**
+     * Handle popup open event - trigger geocoding when popup is actually opened
+     */
+    onPopupOpen() {
+      console.log('[Popup] Popup opened, checking geocoding conditions:', {
+        address: this.address,
+        geocodedAddress: this.geocodedAddress,
+        lat: this.lat,
+        lon: this.lon,
+        isGeocodingAddress: this.isGeocodingAddress
+      });
+      
+      // Only geocode if no address is provided and we haven't geocoded yet
+      if (!this.address && !this.geocodedAddress && this.lat && this.lon && !this.isGeocodingAddress) {
+        console.log('[Popup] Starting geocoding...');
+        this.geocodeLocation();
+      } else {
+        console.log('[Popup] Skipping geocoding - conditions not met');
+      }
+    },
+    
+    /**
+     * Geocode the current location to get a human-readable address
+     */
+    async geocodeLocation() {
+      if (this.isGeocodingAddress || !this.lat || !this.lon) {
+        return;
+      }
+      
+      console.log('[Popup] Geocoding:', this.lat, this.lon);
+      this.isGeocodingAddress = true;
+      
+      try {
+        const geocodedName = await reverseGeocodeWithRateLimit(this.lat, this.lon);
+        if (geocodedName) {
+          this.geocodedAddress = geocodedName;
+          console.log('[Popup] Geocoded to:', geocodedName);
+        }
+      } catch (error) {
+        console.warn('[Popup] Geocoding error:', error.message);
+      } finally {
+        this.isGeocodingAddress = false;
       }
     },
   },
