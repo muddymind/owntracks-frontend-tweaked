@@ -1,5 +1,5 @@
 {
-  "name": "owntracks-frontend",
+  "name": "owntracks-frontend-tweaked",
   "version": "2.15.3",
   "license": "MIT",
   "author": {
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/owntracks/frontend.git"
+    "url": "https://github.com/muddymind/owntracks-frontend-tweaked.git"
   },
   "type": "module",
   "scripts": {
@@ -22,7 +22,11 @@
     "lint:js": "eslint 'src/**/*.{js,vue}'",
     "lint:md": "prettier --check '{*.md,docs/**/*.md,src/**/*.md}'",
     "lint:scss": "prettier --check 'src/**/*.scss'",
-    "test": "vitest run"
+    "test": "vitest run",
+    "docker:build": "docker build -f docker/Dockerfile -t owntracks-frontend-tweaked:latest .",
+    "docker:build-versioned": "docker build -f docker/Dockerfile -t owntracks-frontend-tweaked:$(npm run --silent version) .",
+    "docker:push": "docker push owntracks-frontend-tweaked:latest",
+    "docker:release": "npm run docker:build && npm run docker:push"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.36",

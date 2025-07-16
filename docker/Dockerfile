@@ -7,8 +7,8 @@ RUN npm run build
 
 FROM nginx:1.27-alpine
 LABEL version="2.15.3"
-LABEL description="OwnTracks Frontend"
-LABEL maintainer="Linus Groh <mail@linusgroh.de>"
+LABEL description="OwnTracks Frontend (Tweaked)"
+LABEL maintainer="muddymind"
 ENV LISTEN_PORT=80 \
   SERVER_HOST=otrecorder \
   SERVER_PORT=80
