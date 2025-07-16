@@ -13,6 +13,25 @@ export default defineConfig({
       "@": resolve(dirname(fileURLToPath(import.meta.url)), "./src"),
     },
   },
+  server: {
+    host: '0.0.0.0',
+    port: 3000,
+    proxy: {
+      // Proxy all API calls to the OwnTracks recorder
+      '/api': {
+        target: 'http://localhost:8083',
+        changeOrigin: true,
+        secure: false,
+      },
+      // Proxy WebSocket connections
+      '/ws': {
+        target: 'http://localhost:8083',
+        ws: true,
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  },
   test: {
     environment: "jsdom",
   },
