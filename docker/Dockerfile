@@ -14,6 +14,8 @@ ENV LISTEN_PORT=80 \
   SERVER_PORT=80
 COPY ./docker/nginx.tmpl /etc/nginx/nginx.tmpl
 COPY --from=build /usr/src/app/dist /usr/share/nginx/html
+# Create config.js from example if it doesn't exist
+RUN cp /usr/share/nginx/html/config/config.example.js /usr/share/nginx/html/config/config.js
 EXPOSE 80
 CMD /bin/sh -c " \
   envsubst '\${SERVER_HOST} \${SERVER_PORT} \${LISTEN_PORT}' \
