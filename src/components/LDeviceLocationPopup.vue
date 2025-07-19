@@ -28,11 +28,14 @@
           <br />
           {{ alt }}m
         </li>
-        <li v-if="address || geocodedAddress || isGeocodingAddress" :title="$t('Address')">
+        <li
+          v-if="address || geocodedAddress || isGeocodingAddress"
+          :title="$t('Address')"
+        >
           <HomeIcon size="1x" aria-hidden="true" role="img" />
           <span v-if="address">{{ address }}</span>
           <span v-else-if="geocodedAddress">{{ geocodedAddress }}</span>
-          <span v-else-if="isGeocodingAddress">{{ $t('Loading...') }}</span>
+          <span v-else-if="isGeocodingAddress">{{ $t("Loading...") }}</span>
         </li>
         <li v-if="typeof battery === 'number'" :title="$t('Battery')">
           <BatteryIcon size="1x" aria-hidden="true" role="img" />
@@ -49,11 +52,16 @@
         </li>
         <li v-if="nodeEventType" :title="$t('Event Type')">
           <TagIcon size="1x" aria-hidden="true" role="img" />
-          {{ nodeEventType === 'visit' ? $t('Visit') : $t('Trip') }} #{{ nodeEventId }}
+          {{ nodeEventType === "visit" ? $t("Visit") : $t("Trip") }} #{{
+            nodeEventId
+          }}
         </li>
         <li v-if="nodeEventStart && nodeEventEnd" :title="$t('Event Duration')">
           <ClockIcon size="1x" aria-hidden="true" role="img" />
-          {{ new Date(nodeEventStart * 1000).toLocaleTimeString($config.locale) }} - 
+          {{
+            new Date(nodeEventStart * 1000).toLocaleTimeString($config.locale)
+          }}
+          -
           {{ new Date(nodeEventEnd * 1000).toLocaleTimeString($config.locale) }}
           <br />
           <small>{{ formatDuration(nodeEventEnd - nodeEventStart) }}</small>
@@ -210,7 +218,7 @@ export default {
       const hours = Math.floor(seconds / 3600);
       const minutes = Math.floor((seconds % 3600) / 60);
       const secs = Math.floor(seconds % 60);
-      
+
       if (hours > 0) {
         return `${hours}h ${minutes}m ${secs}s`;
       } else if (minutes > 0) {
@@ -219,28 +227,34 @@ export default {
         return `${secs}s`;
       }
     },
-    
+
     /**
      * Handle popup open event - trigger geocoding when popup is actually opened
      */
     onPopupOpen() {
-      console.log('[Popup] Popup opened, checking geocoding conditions:', {
+      console.log("[Popup] Popup opened, checking geocoding conditions:", {
         address: this.address,
         geocodedAddress: this.geocodedAddress,
         lat: this.lat,
         lon: this.lon,
-        isGeocodingAddress: this.isGeocodingAddress
+        isGeocodingAddress: this.isGeocodingAddress,
       });
-      
+
       // Only geocode if no address is provided and we haven't geocoded yet
-      if (!this.address && !this.geocodedAddress && this.lat && this.lon && !this.isGeocodingAddress) {
-        console.log('[Popup] Starting geocoding...');
+      if (
+        !this.address &&
+        !this.geocodedAddress &&
+        this.lat &&
+        this.lon &&
+        !this.isGeocodingAddress
+      ) {
+        console.log("[Popup] Starting geocoding...");
         this.geocodeLocation();
       } else {
-        console.log('[Popup] Skipping geocoding - conditions not met');
+        console.log("[Popup] Skipping geocoding - conditions not met");
       }
     },
-    
+
     /**
      * Geocode the current location to get a human-readable address
      */
@@ -248,18 +262,21 @@ export default {
       if (this.isGeocodingAddress || !this.lat || !this.lon) {
         return;
       }
-      
-      console.log('[Popup] Geocoding:', this.lat, this.lon);
+
+      console.log("[Popup] Geocoding:", this.lat, this.lon);
       this.isGeocodingAddress = true;
-      
+
       try {
-        const geocodedName = await reverseGeocodeWithRateLimit(this.lat, this.lon);
+        const geocodedName = await reverseGeocodeWithRateLimit(
+          this.lat,
+          this.lon
+        );
         if (geocodedName) {
           this.geocodedAddress = geocodedName;
-          console.log('[Popup] Geocoded to:', geocodedName);
+          console.log("[Popup] Geocoded to:", geocodedName);
         }
       } catch (error) {
-        console.warn('[Popup] Geocoding error:', error.message);
+        console.warn("[Popup] Geocoding error:", error.message);
       } finally {
         this.isGeocodingAddress = false;
       }

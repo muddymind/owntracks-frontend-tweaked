@@ -1,4 +1,3 @@
-/* eslint-disable max-len */
 const svg = `
 <svg
   xmlns="http://www.w3.org/2000/svg"
@@ -11,7 +10,6 @@ const svg = `
   />
 </svg>
 `;
-/* eslint-enable */
 
 export default L.divIcon({
   className: "",

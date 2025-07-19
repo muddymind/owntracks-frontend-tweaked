@@ -15,8 +15,11 @@ import { enhanceLocationData } from "./locationEnhancer";
  */
 const filteredLocationHistory = (state) => {
   // First, enhance the raw location data with clustering configuration
-  const enhancedLocationHistory = enhanceLocationData(state.locationHistory, state.clustering);
-  
+  const enhancedLocationHistory = enhanceLocationData(
+    state.locationHistory,
+    state.clustering
+  );
+
   // Then apply the existing filters
   const locationHistory = {};
   Object.keys(enhancedLocationHistory).forEach((user) => {

@@ -93,7 +93,7 @@ export default {
   methods: {
     ...mapActions([
       "setClusteringEnabled",
-      "setClusterRadius", 
+      "setClusterRadius",
       "setMinVisitClusterSize",
       "setMinTravelClusterSize",
     ]),
@@ -193,7 +193,7 @@ export default {
 
     .slider {
       height: 8px; // Slightly thicker for mobile
-      
+
       &::-webkit-slider-thumb {
         width: 20px;
         height: 20px; // Larger touch target for mobile
