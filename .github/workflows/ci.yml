@@ -1,0 +1,33 @@
+name: CI Pipeline
+
+on: [push, pull_request]
+
+jobs:
+  # Run linting, testing, and building in parallel
+  quality-checks:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        check: [lint, test, build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      
+      - name: Run lint
+        if: matrix.check == 'lint'
+        run: |
+          npm run lint:js
+          npm run lint:md
+          npm run lint:scss
+          
+      - name: Run tests
+        if: matrix.check == 'test'
+        run: npm test
+        
+      - name: Run build
+        if: matrix.check == 'build'
+        run: npm run build
