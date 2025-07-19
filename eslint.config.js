@@ -34,6 +34,7 @@ export default [
           trailingComma: "es5",
           printWidth: 80,
           htmlWhitespaceSensitivity: "ignore",
+          endOfLine: "auto",
         },
       ],
       "vue/multi-word-component-names": [
