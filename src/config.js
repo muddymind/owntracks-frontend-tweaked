@@ -81,7 +81,9 @@ const DEFAULT_CONFIG = {
   },
   primaryColor: "#3f51b5",
   router: {
-    basePath: "/",
+    basePath: window.location.pathname.endsWith("/")
+      ? window.location.pathname
+      : window.location.pathname + "/",
   },
   selectedDevice: null,
   selectedUser: null,
