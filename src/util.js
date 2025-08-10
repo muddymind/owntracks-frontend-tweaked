@@ -27,10 +27,14 @@ export const getApiUrl = (path) => {
     return new URL(`${normalizedBaseUrl}${normalizedPath}`);
   } else {
     // Use relative URL to work with any subpath
-    return new URL(
-      normalizedPath,
-      window.location.origin + window.location.pathname
-    );
+    // Remove leading slash from normalizedPath since we're appending to pathname
+    const pathToAppend = normalizedPath.startsWith("/")
+      ? normalizedPath.substring(1)
+      : normalizedPath;
+    const basePath = window.location.pathname.endsWith("/")
+      ? window.location.pathname
+      : window.location.pathname + "/";
+    return new URL(basePath + pathToAppend, window.location.origin);
   }
 };
 
