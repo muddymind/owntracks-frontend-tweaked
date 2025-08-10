@@ -11,11 +11,20 @@ import { DATE_TIME_FORMAT, EARTH_RADIUS_IN_KM } from "@/constants";
  * @returns {URL} Final API URL
  */
 export const getApiUrl = (path) => {
-  const normalizedBaseUrl = config.api.baseUrl.endsWith("/")
-    ? config.api.baseUrl.slice(0, -1)
-    : config.api.baseUrl;
+  // Use relative URLs to work with any base path (e.g., /owntracks subpath)
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  return new URL(`${normalizedBaseUrl}${normalizedPath}`);
+  
+  // Check if we have a custom base URL configured
+  if (config.api.baseUrl && config.api.baseUrl !== `${window.location.protocol}//${window.location.host}`) {
+    // Custom base URL provided, use absolute URL
+    const normalizedBaseUrl = config.api.baseUrl.endsWith("/")
+      ? config.api.baseUrl.slice(0, -1)
+      : config.api.baseUrl;
+    return new URL(`${normalizedBaseUrl}${normalizedPath}`);
+  } else {
+    // Use relative URL to work with any subpath
+    return new URL(normalizedPath, window.location.origin + window.location.pathname);
+  }
 };
 
 /**
